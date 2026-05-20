@@ -1,0 +1,270 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Tasks {
+  id String @id @default(uuid())
+  staffsId String 
+  message String @db.Text
+  date                DateTime  @default(now())
+  markTime DateTime? @db.Date
+  remark String @db.Text
+  taskChecked Boolean @default(false)
+  employee            Staffs    @relation(fields: [staffsId], references: [id])
+  @@map("tasks")
+}
+
+model Staffs {
+  id              String        @id @default(uuid())
+  name            String
+  emailId         String
+  phoneNo         String
+  joinDate        DateTime      @db.Date
+  leaveDate       DateTime?     @db.Date
+  birthDate       DateTime      @db.Date
+  anniversaryDate DateTime?     @db.Date
+  hash            String
+  salary          Float
+  panNo           String
+  aadharNo        String?
+  department      String
+  post            String
+  updatedAt DateTime? @updatedAt
+  permissions     Permissions   @relation(fields: [permissionId], references: [id])
+  permissionId    String        @unique
+  groupId         String?       @unique
+  group           Group?        @relation("GroupStaffs", fields: [groupId], references: [id])
+  conveyanceCost  Int?          @default(6)
+  activities      Activity[]
+  funnel          Funnel[]
+  salarySlips     SalarySlip[]
+  sla             Sla[]
+  support         Support[]
+  persons         PersonStaff[]
+  tasks   Tasks[]
+
+  @@map("staffs")
+}
+
+model Settings {
+  id DateTime @id @default(now())
+  oem            Json
+  slaSupportType Json
+  slaType        Json
+  supportType Json
+  opportunity    Json
+  funnelType     Json
+  funnelStatus   Json
+  supportStatus  Json
+  target Int
+
+  @@map("settings")
+}
+
+model BillingData { 
+  billingId DateTime @id @default(now())
+  amount Int
+
+  @@map("billingdata")
+}
+
+model Activity {
+  activityId          String    @id @default(uuid())
+  date                DateTime  @default(now())
+  location            String?
+  activity            String    @db.Text
+  email               String?
+  phoneNo             String?
+  companyId           String?
+  personId            String?
+  fromLocation        String?
+  toLocation          String?
+  distance            Float?
+  parkingCost         Int?
+  employee            Staffs    @relation(fields: [staffsId], references: [id])
+  staffsId            String
+  score               Int?
+  checked             Boolean   @default(false)
+  notification        String?
+  notificationChecked Boolean?  @default(false)
+  checkedBy           String
+  Customer            Customer? @relation(fields: [companyId], references: [customerId])
+  person              Person?   @relation(fields: [personId], references: [personId])
+
+  @@map("activity")
+}
+
+model Funnel {
+  funnelId    String   @id @default(uuid())
+  date        DateTime @default(now())
+  companyId   String
+  personId    String
+  type        String
+  opportunity String
+  oem         String
+  topLine     Float
+  bottomLine  Float
+  description String   @db.Text
+  status      String
+  closureDate DateTime @db.Date
+  employee    Staffs   @relation(fields: [staffsId], references: [id])
+  staffsId    String
+  Customer    Customer @relation(fields: [companyId], references: [customerId])
+  person      Person?  @relation(fields: [personId], references: [personId])
+
+  @@map("funnel")
+}
+
+model Group {
+  id          String   @id @default(uuid())
+  name String
+  head        String
+  headId      String
+  staffs      Staffs[] @relation("GroupStaffs")
+  members     Json
+  scores Boolean
+  funnel Boolean
+  support Boolean
+  reports Boolean
+  hierarchy Boolean
+  sla Boolean
+
+  @@map("group")
+}
+
+model SalarySlip {
+  slipId          String   @id @default(uuid())
+  month           DateTime @db.Date
+  employee        Staffs   @relation(fields: [staffsId], references: [id])
+  salary          Float
+  leavesTaken     Float
+  leavesAvailable Float
+  carryLeaves     Float
+  compoffTaken    Float
+  compoffBalance  Float
+  compoffAdded    Float
+  tds             Float
+  ec              Float
+  loan            Float
+  others          Float
+  paidDays        Float
+  staffsId        String
+  post            String?
+  department      String?
+  netSalary       Float @default(0)
+  @@map("salaryslip")
+}
+
+model Support {
+  supportId   String   @id @default(uuid())
+  companyId   String
+  personId    String
+  oem         String
+  description String   @db.Text
+  type        String
+  status      String
+  employee    Staffs   @relation(fields: [staffsId], references: [id])
+  addDate     DateTime @db.Date
+  closeDate   DateTime @db.Date
+  staffsId    String
+  Customer    Customer @relation(fields: [companyId], references: [customerId])
+  person      Person?  @relation(fields: [personId], references: [personId])
+
+  @@map("support")
+}
+
+model Sla {
+  slaId              String   @id @default(uuid())
+  companyId          String
+  employee           Staffs   @relation(fields: [staffsId], references: [id])
+  personId           String
+  oem                String
+  productDescription String   @db.Text
+  sla                String
+  supportType        String
+  slaStartDate       DateTime @db.Date
+  slaEndDate         DateTime @db.Date
+  staffsId           String
+  contractId         String
+  pdfLocation        String?
+  serialNo           String   @db.Text
+  archived Boolean? @default(false)
+  Customer           Customer @relation(fields: [companyId], references: [customerId])
+  person             Person?  @relation(fields: [personId], references: [personId])
+
+  @@map("sla")
+}
+
+model Permissions {
+  id       String   @id @default(uuid())
+  slaReport      Boolean? @default(false)
+  slaEntry Boolean? @default(false)
+  funnel   Boolean?
+  admin    Boolean?
+  support  Boolean?
+  employee Staffs?
+
+  @@map("permissions")
+}
+
+model Customer {
+  customerId   String     @id @default(uuid())
+  companyName  String
+  numberOfBranch Int?
+  totalITUsers Int?
+  firewallModelNo String?
+  firewallAMCDueDate DateTime? @db.Date
+  antiVirusOem String?
+  renewalDueDate DateTime? @db.Date
+  L3SwitchModel String? 
+  L3AMCDueDate DateTime? @db.Date
+  L2SwitchModel String?
+  L2AMCDueDate DateTime? @db.Date
+  wifiModel String?
+  wifiAMCDueDate DateTime? @db.Date
+  VCOEM String?
+  VCAMCDueDate DateTime? @db.Date
+  epbxModel String?
+  epbxAMCDute DateTime? @db.Date
+  location String?
+  state String?
+  activities   Activity[]
+  funnel       Funnel[]
+  sla          Sla[]
+  support      Support[]
+  persons      Person[]
+
+  @@map("customer")
+}
+
+model Person {
+  personId   String        @id @default(uuid())
+  personName String
+  emailId    String
+  phoneNo    String?
+  companyId  String?
+  company    Customer?     @relation(fields: [companyId], references: [customerId])
+  entryCount Int
+  activities Activity[]
+  funnel     Funnel[]
+  sla        Sla[]
+  support    Support[]
+  staffs     PersonStaff[]
+
+  @@map("person")
+}
+
+model PersonStaff {
+  personId String
+  staffId  String
+  person   Person @relation(fields: [personId], references: [personId])
+  staff    Staffs @relation(fields: [staffId], references: [id])
+
+  @@id([personId, staffId])
+  @@map("personstaff")
+}
