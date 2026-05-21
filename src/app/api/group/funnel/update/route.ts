@@ -31,11 +31,20 @@ export async function POST(
 
         updated[field] = value
 
-        const data = await prisma.funnel.update({
+        const { count } = await prisma.funnel.updateMany({
             where: {
-                funnelId: funnelId
-            }, 
+                funnelId,
+                staffsId: { in: groupData.members as string[] }
+            },
             data: updated
+        })
+
+        if (count === 0) {
+            return new NextResponse('Not found or forbidden.', { status: 403 })
+        }
+
+        const data = await prisma.funnel.findUnique({
+            where: { funnelId }
         })
 
         return NextResponse.json(data);

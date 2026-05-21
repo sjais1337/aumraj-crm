@@ -21,17 +21,22 @@ export async function POST(
 
         updated[field] = value
 	
-	let filtermodel = {};
-	filtermodel["supportId"] = supportId;
-	if(!session.user.support){
-		filtermodel["staffsId"] = session.user.id;
+	const where: { supportId: string; staffsId?: string } = { supportId };
+	if (!session.user.support) {
+		where.staffsId = session.user.id;
 	}
 
-        const data = await prisma.support.update({
-            where: {
-	    	supportId: supportId
-	    },
+        const { count } = await prisma.support.updateMany({
+            where,
             data: updated
+        })
+
+        if (count === 0) {
+            return new NextResponse('Not found or forbidden.', { status: 403 })
+        }
+
+        const data = await prisma.support.findUnique({
+            where: { supportId }
         })
 
         return NextResponse.json(data);

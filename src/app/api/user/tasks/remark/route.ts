@@ -17,16 +17,24 @@ export async function POST(
 
         let { remark, id } = body;
 
-
-        const task = await prisma.tasks.update({
+        const { count } = await prisma.tasks.updateMany({
             where: {
-                id: id
+                id,
+                staffsId: session.user.id
             },
             data: {
                 remark: remark,
                 taskChecked: true,
                 markTime: new Date()
             }
+        })
+
+        if (count === 0) {
+            return new NextResponse('Not found or forbidden.', { status: 403 })
+        }
+
+        const task = await prisma.tasks.findUnique({
+            where: { id }
         })
 
         return NextResponse.json(task);
