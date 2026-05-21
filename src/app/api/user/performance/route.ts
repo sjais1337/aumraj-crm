@@ -118,14 +118,6 @@ export async function GET(
             return acc;
         }, {});
 
-        const employeeCount = prisma.staffs.count({
-            where: {
-                NOT: {
-                    leaveDate: null
-                }
-            }
-        });
-
         const teamData = Object.entries(averageScoresByMonth).map(([month, data]) => ({
             month,
             //@ts-ignore
