@@ -1,0 +1,27 @@
+# systemd unit for aumraj-crm production
+# Install:
+#   sudo cp infra/systemd/aumraj-prod.service.template /etc/systemd/system/aumraj-prod.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable aumraj-prod
+#   sudo systemctl start aumraj-prod
+
+[Unit]
+Description=aumraj-crm production (Next.js)
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/aumraj-crm
+EnvironmentFile=/var/www/aumraj-crm/.env.production
+ExecStart=/usr/bin/npm start
+Restart=on-failure
+RestartSec=10
+
+# Hardening
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

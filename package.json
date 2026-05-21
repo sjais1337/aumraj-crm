@@ -6,7 +6,8 @@
     "dev": "next dev -p 5500",
     "build": "next build",
     "start": "next start -p 5500",
-    "lint": "next lint"
+    "lint": "next lint",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@emotion/react": "^11.11.4",
