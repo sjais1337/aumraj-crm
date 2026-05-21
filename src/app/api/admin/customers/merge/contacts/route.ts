@@ -17,74 +17,88 @@ export async function POST(
             return new NextResponse('User is not an admin.', { status: 401 })
         }
         
-        const ids = await request.json();
+        const rows = [...(await request.json())];
 
-        const { personId, companyId } = ids.splice(0, 1)[0];
-
-        const otherPersonIds = ids.map(i => i.personId);
-        const otherCompanyIds = ids.map(i => i.companyId).filter(i => i !== companyId);
-
-        await prisma.$transaction(async (prisma) => {
-        await prisma.person.updateMany({
-            where: {
-            personId: {
-                in: otherPersonIds,
-            },
-            },
-            data: {
-            companyId: companyId,
-            },
-        });
-
-        const otherPersonIdsString = otherPersonIds.map(i => `'${i}'`).join(',');
-
-        const updateQueries = [
-            `UPDATE activity SET personId = "${personId}", companyId = "${companyId}" WHERE personId IN (${otherPersonIdsString});`,
-            `UPDATE funnel SET personId = "${personId}", companyId = "${companyId}" WHERE personId IN (${otherPersonIdsString});`,
-            `UPDATE support SET personId = "${personId}", companyId = "${companyId}" WHERE personId IN (${otherPersonIdsString});`,
-            `UPDATE sla SET personId = "${personId}", companyId = "${companyId}" WHERE personId IN (${otherPersonIdsString});`,
-        ];
-
-        for (const query of updateQueries) {
-            await prisma.$queryRawUnsafe(query);
+        if (rows.length < 2) {
+            return new NextResponse('Select at least two rows to merge.', { status: 400 })
         }
 
-        const personStaffs = await prisma.personStaff.findMany({
-            where: {
-                personId: {
-                    in: [personId, ...otherPersonIds],
-                },
-            },
-        });
+        const [survivor, ...others] = rows;
+        const { personId, companyId } = survivor;
+        const otherPersonIds = others.map((i) => i.personId);
+        const otherCompanyIds = others
+            .map((i) => i.companyId)
+            .filter((id) => id && id !== companyId);
 
-        const uniquePersonStaffs = Array.from(
-            new Map(
-                personStaffs.map(item => [`${item.personId}_${item.staffId}`, item])
-                ).values()
-            ).map(i => ({ personId: personId, staffId: i.staffId }));
-
-        await prisma.$queryRawUnsafe(
-            `DELETE FROM personstaff WHERE personId IN (${[personId, ...otherPersonIds].map(i => `'${i}'`).join(',')});`
-        );
-
-        if (uniquePersonStaffs.length > 0) {
-            await prisma.personStaff.createMany({
-                data: uniquePersonStaffs,
-                skipDuplicates: true,
-            });
+        if (otherPersonIds.length === 0) {
+            return NextResponse.json({ personId });
         }
 
-        await prisma.$queryRawUnsafe(
-            `DELETE FROM person WHERE personId IN (${otherPersonIdsString});`
-        );
-
-        if (otherCompanyIds.length > 0) {
-            await prisma.customer.deleteMany({
+        await prisma.$transaction(async (tx) => {
+            await tx.person.updateMany({
                 where: {
-                    customerId: {
-                    in: otherCompanyIds,
+                    personId: {
+                        in: otherPersonIds,
                     },
                 },
+                data: {
+                    companyId: companyId,
+                },
+            });
+
+            const otherPersonIdsString = otherPersonIds.map((id) => `'${id}'`).join(',');
+
+            const updateQueries = [
+                `UPDATE activity SET personId = "${personId}", companyId = "${companyId}" WHERE personId IN (${otherPersonIdsString});`,
+                `UPDATE funnel SET personId = "${personId}", companyId = "${companyId}" WHERE personId IN (${otherPersonIdsString});`,
+                `UPDATE support SET personId = "${personId}", companyId = "${companyId}" WHERE personId IN (${otherPersonIdsString});`,
+                `UPDATE sla SET personId = "${personId}", companyId = "${companyId}" WHERE personId IN (${otherPersonIdsString});`,
+            ];
+
+            for (const query of updateQueries) {
+                await tx.$queryRawUnsafe(query);
+            }
+
+            const personStaffs = await tx.personStaff.findMany({
+                where: {
+                    personId: {
+                        in: [personId, ...otherPersonIds],
+                    },
+                },
+            });
+
+            const uniquePersonStaffs = Array.from(
+                new Map(
+                    personStaffs.map((item) => [`${item.staffId}`, item])
+                ).values()
+            ).map((item) => ({ personId, staffId: item.staffId }));
+
+            const allPersonIds = [personId, ...otherPersonIds]
+                .map((id) => `'${id}'`)
+                .join(',');
+
+            await tx.$queryRawUnsafe(
+                `DELETE FROM personstaff WHERE personId IN (${allPersonIds});`
+            );
+
+            if (uniquePersonStaffs.length > 0) {
+                await tx.personStaff.createMany({
+                    data: uniquePersonStaffs,
+                    skipDuplicates: true,
+                });
+            }
+
+            await tx.$queryRawUnsafe(
+                `DELETE FROM person WHERE personId IN (${otherPersonIdsString});`
+            );
+
+            if (otherCompanyIds.length > 0) {
+                await tx.customer.deleteMany({
+                    where: {
+                        customerId: {
+                            in: otherCompanyIds,
+                        },
+                    },
                 });
             }
         });

@@ -1,50 +1,7 @@
 import { getServerSession } from "next-auth";
-import prisma from '@/libs/prismadb';
 import { authOptions } from "@/libs/authOptions";
 import { NextResponse } from "next/server";
-
-async function getCustomerData(filterModel: any) {
-  
-    let newFilter:any = [
-        filterModel.personName ? { personName: filterModel.personName } : {},
-        filterModel.phoneNo ? { phoneNo: filterModel.phoneNo  } : {},
-        filterModel.emailId ? { emailId: filterModel.emailId } : {},
-        filterModel.companyName ? { company: { companyName: filterModel.companyName } } : {},
-    ];
-
-    for (let x of Object.entries(filterModel) ){
-        if(!['personName', 'phoneNo', 'emailId', 'companyName', 'employee'].includes(x[0])){
-            let temp = {};
-            temp['company'] = {};
-            temp['company'][x[0]] = x[1]; 
-            console.log(temp)
-            newFilter.push(temp)
-        }
-    }
-
-    if(filterModel['employee']){
-        const id = (await prisma.staffs.findFirst({
-        where: filterModel.employee
-        })).id;
-        newFilter.push({
-        staffs: {
-            some: {
-            staffId: id
-            }
-        }
-        });
-    }
-    
-    const totalContacts = await prisma.person.count({
-        where: {
-            AND: newFilter,
-        },
-    });
-
-    const totalCount = await prisma.customer.count();
-  
-    return { count: totalCount, contact: totalContacts };
-}
+import { queryCustomerCounts } from '@/libs/customerQuery';
 
 export async function POST(
     request: Request
@@ -64,7 +21,7 @@ export async function POST(
 
         let { filterModel } =  body;
 
-        const data = await getCustomerData(filterModel);
+        const data = await queryCustomerCounts(filterModel ?? {});
         
         return NextResponse.json(data);
     }catch(err) {

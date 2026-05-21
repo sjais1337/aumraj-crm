@@ -17,64 +17,76 @@ export async function POST(
             return new NextResponse('User is not an admin.', { status: 401 })
         }
         
-        const ids = await request.json();
+        const rows = [...(await request.json())];
 
-        const { personId, companyId } = ids.splice(0, 1)[0];
-        
-        const otherPersonIds = ids.map(i => i.personId);
-        const otherCompanyIds = ids.map(i => i.companyId).filter(i => i !== companyId);
-        
-        const otherCompanyIdsFormatted = otherCompanyIds.map(i => `'${i}'`).join(',');
-        
-        await prisma.person.updateMany({
-            where: {
-                personId: {
-                    in: otherPersonIds,
-                },
-            },
-            data: {
-                companyId: companyId,
-            },
-        });
-        
+        if (rows.length < 2) {
+            return new NextResponse('Select at least two rows to merge.', { status: 400 })
+        }
+
+        const [survivor, ...others] = rows;
+        const { personId, companyId } = survivor;
+        const otherPersonIds = others.map((i) => i.personId);
+        const otherCompanyIds = others
+            .map((i) => i.companyId)
+            .filter((id) => id && id !== companyId);
+
         await prisma.$transaction(async (tx) => {
-            await tx.$queryRawUnsafe(`
-                UPDATE activity
-                SET companyId = ?
-                WHERE companyId IN (${otherCompanyIdsFormatted});
-            `, companyId);
-        
-            await tx.$queryRawUnsafe(`
-                UPDATE funnel
-                SET companyId = ?
-                WHERE companyId IN (${otherCompanyIdsFormatted});
-            `, companyId);
-        
-            await tx.$queryRawUnsafe(`
-                UPDATE support
-                SET companyId = ?
-                WHERE companyId IN (${otherCompanyIdsFormatted});
-            `, companyId);
-        
-            await tx.$queryRawUnsafe(`
-                UPDATE sla
-                SET companyId = ?
-                WHERE companyId IN (${otherCompanyIdsFormatted});
-            `, companyId);
-        
-            await tx.$queryRawUnsafe(`
-                UPDATE person
-                SET companyId = ?
-                WHERE companyId IN (${otherCompanyIdsFormatted});
-            `, companyId);
-        
-            await tx.customer.deleteMany({
-                where: {
-                    customerId: {
-                        in: otherCompanyIds,
+            if (otherPersonIds.length > 0) {
+                await tx.person.updateMany({
+                    where: {
+                        personId: {
+                            in: otherPersonIds,
+                        },
                     },
-                },
-            });
+                    data: {
+                        companyId: companyId,
+                    },
+                });
+            }
+
+            if (otherCompanyIds.length > 0) {
+                const otherCompanyIdsFormatted = otherCompanyIds
+                    .map((id) => `'${id}'`)
+                    .join(',');
+
+                await tx.$queryRawUnsafe(`
+                    UPDATE activity
+                    SET companyId = ?
+                    WHERE companyId IN (${otherCompanyIdsFormatted});
+                `, companyId);
+
+                await tx.$queryRawUnsafe(`
+                    UPDATE funnel
+                    SET companyId = ?
+                    WHERE companyId IN (${otherCompanyIdsFormatted});
+                `, companyId);
+
+                await tx.$queryRawUnsafe(`
+                    UPDATE support
+                    SET companyId = ?
+                    WHERE companyId IN (${otherCompanyIdsFormatted});
+                `, companyId);
+
+                await tx.$queryRawUnsafe(`
+                    UPDATE sla
+                    SET companyId = ?
+                    WHERE companyId IN (${otherCompanyIdsFormatted});
+                `, companyId);
+
+                await tx.$queryRawUnsafe(`
+                    UPDATE person
+                    SET companyId = ?
+                    WHERE companyId IN (${otherCompanyIdsFormatted});
+                `, companyId);
+
+                await tx.customer.deleteMany({
+                    where: {
+                        customerId: {
+                            in: otherCompanyIds,
+                        },
+                    },
+                });
+            }
         });
 
         return NextResponse.json({

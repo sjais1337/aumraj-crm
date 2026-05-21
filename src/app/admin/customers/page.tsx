@@ -531,7 +531,7 @@ export default function ActivityReport(){
       <Breadcrumb pageName="Customer Database"></Breadcrumb>
       <div className="mt-5 mb-7 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className='text-title-md1 font-semibold text-black dark:text-white'>Total Companies: {totalCompanies}, Total Contacts: {totalContacts}</h2>
+              <h2 className='text-title-md1 font-semibold text-black dark:text-white'>Companies: {totalCompanies}, Contacts: {totalContacts}</h2>
             </div>
 
             <nav>

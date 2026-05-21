@@ -8,11 +8,6 @@ export type ExportColumn = {
   format?: ExportColumnFormat;
 };
 
-function companyField(row: Record<string, unknown>, field: string): unknown {
-  const company = row.company as Record<string, unknown> | undefined;
-  return company?.[field] ?? '';
-}
-
 function formatCell(value: unknown, format: ExportColumnFormat = 'text'): string | number {
   if (value == null || value === '') {
     return '';
@@ -79,28 +74,30 @@ const AMC_COLUMNS: ExportColumn[] = [
 ];
 
 const CUSTOMER_COLUMNS: ExportColumn[] = [
-  { header: 'Company', getValue: (r) => companyField(r, 'companyName') },
+  { header: 'Company', getValue: (r) => r.companyName },
   { header: 'Contact Name', getValue: (r) => r.personName },
   { header: 'Phone No.', getValue: (r) => r.phoneNo },
   { header: 'Email', getValue: (r) => r.emailId },
-  { header: 'No. of Branches', getValue: (r) => companyField(r, 'numberOfBranch'), format: 'number' },
-  { header: 'Total IT Users', getValue: (r) => companyField(r, 'totalITUsers'), format: 'number' },
-  { header: 'Firewall Model No', getValue: (r) => companyField(r, 'firewallModelNo') },
-  { header: 'Firewall AMC Date', getValue: (r) => companyField(r, 'firewallAMCDueDate'), format: 'date' },
-  { header: 'Anti Virus OEM', getValue: (r) => companyField(r, 'antiVirusOem') },
-  { header: 'Renewal Due Date', getValue: (r) => companyField(r, 'renewalDueDate'), format: 'date' },
-  { header: 'L3 Switch Model', getValue: (r) => companyField(r, 'L3SwitchModel') },
-  { header: 'L3 AMC Date', getValue: (r) => companyField(r, 'L3AMCDueDate'), format: 'date' },
-  { header: 'L2 Switch Model', getValue: (r) => companyField(r, 'L2SwitchModel') },
-  { header: 'L2 AMC Date', getValue: (r) => companyField(r, 'L2AMCDueDate'), format: 'date' },
-  { header: 'Wi-Fi Model', getValue: (r) => companyField(r, 'wifiModel') },
-  { header: 'Wi-Fi AMC Date', getValue: (r) => companyField(r, 'wifiAMCDueDate'), format: 'date' },
-  { header: 'VC OEM', getValue: (r) => companyField(r, 'VCOEM') },
-  { header: 'VC AMC Date', getValue: (r) => companyField(r, 'VCAMCDueDate'), format: 'date' },
-  { header: 'EPBX Model', getValue: (r) => companyField(r, 'epbxModel') },
-  { header: 'EPBX Date', getValue: (r) => companyField(r, 'epbxAMCDute'), format: 'date' },
-  { header: 'Location', getValue: (r) => companyField(r, 'location') },
-  { header: 'State', getValue: (r) => companyField(r, 'state') },
+  { header: 'Assigned Staff', getValue: (r) =>
+      Array.isArray(r.staffs) ? r.staffs.join(', ') : '' },
+  { header: 'No. of Branches', getValue: (r) => r.numberOfBranch, format: 'number' },
+  { header: 'Total IT Users', getValue: (r) => r.totalITUsers, format: 'number' },
+  { header: 'Firewall Model No', getValue: (r) => r.firewallModelNo },
+  { header: 'Firewall AMC Date', getValue: (r) => r.firewallAMCDueDate, format: 'date' },
+  { header: 'Anti Virus OEM', getValue: (r) => r.antiVirusOem },
+  { header: 'Renewal Due Date', getValue: (r) => r.renewalDueDate, format: 'date' },
+  { header: 'L3 Switch Model', getValue: (r) => r.L3SwitchModel },
+  { header: 'L3 AMC Date', getValue: (r) => r.L3AMCDueDate, format: 'date' },
+  { header: 'L2 Switch Model', getValue: (r) => r.L2SwitchModel },
+  { header: 'L2 AMC Date', getValue: (r) => r.L2AMCDueDate, format: 'date' },
+  { header: 'Wi-Fi Model', getValue: (r) => r.wifiModel },
+  { header: 'Wi-Fi AMC Date', getValue: (r) => r.wifiAMCDueDate, format: 'date' },
+  { header: 'VC OEM', getValue: (r) => r.VCOEM },
+  { header: 'VC AMC Date', getValue: (r) => r.VCAMCDueDate, format: 'date' },
+  { header: 'EPBX Model', getValue: (r) => r.epbxModel },
+  { header: 'EPBX Date', getValue: (r) => r.epbxAMCDute, format: 'date' },
+  { header: 'Location', getValue: (r) => r.location },
+  { header: 'State', getValue: (r) => r.state },
 ];
 
 const EXPORT_COLUMNS: Record<string, ExportColumn[]> = {
