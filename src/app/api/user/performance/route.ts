@@ -72,7 +72,9 @@ export async function GET(
             LIMIT 1;
         `;
 
-        const averageScoresByMonth = allData.reduce((acc: any, curr) => {
+        const averageScoresByMonth = allData.reduce<
+            Record<string, { totalScore: number; count: number }>
+        >((acc, curr) => {
             const month = curr.month;
             acc[month] = acc[month] || { totalScore: 0, count: 0 };
             acc[month].totalScore += curr.sumScore;
@@ -82,13 +84,12 @@ export async function GET(
 
         const teamData = Object.entries(averageScoresByMonth).map(([month, data]) => ({
             month,
-            //@ts-ignore
-            score: parseInt(data.totalScore / data.count) || 0,
+            score: data.count > 0 ? Math.floor(data.totalScore / data.count) : 0,
         }));
 
         const userData = teamData.map(item => ({
             month: item.month,
-            score: parseInt(userRaw.find(userItem => userItem.month === item.month)?.scoreRaw) || 0
+            score: userRaw.find(userItem => userItem.month === item.month)?.scoreRaw ?? 0,
         }));
 
         const topCompanies = await prisma.$queryRaw`
