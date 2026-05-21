@@ -25,6 +25,7 @@ import {
 import toast from 'react-hot-toast';
 import Button from '@/components/FormElements/Button';
 import Export from '@/components/Breadcrumbs/Export';
+import CustomerMergeDialog from '@/components/Customers/MergeDialog';
 import {
   FilterModel,
 } from 'ag-grid-community'
@@ -401,8 +402,8 @@ export default function ActivityReport(){
 
 
   const updateFilters = () => {
+    if (!gridRef.current?.api) return;
     setFilters(prismaFilter(gridRef.current.api.getFilterModel()));
-    console.log(prismaFilter(gridRef.current.api.getFilterModel()));
   }
 
   const  [totalCompanies, setTotalCompanies] = useState(0);
@@ -456,57 +457,91 @@ export default function ActivityReport(){
   const colorTheme = localStorage.getItem('color-theme');
   const classAddition = colorTheme == '"dark"' ? '-dark' : '';
 
-  const [ selectedRows, setSelectedRows ] = useState([]);
-  const [ mergeDisabled, setDeleteDisabled ] = useState(true);
+  type SelectedRow = {
+    personId: string;
+    companyId: string | null;
+    personName: string;
+    companyName: string | undefined;
+  };
+
+  const [ selectedRows, setSelectedRows ] = useState<SelectedRow[]>([]);
+  const [ mergeDisabled, setMergeDisabled ] = useState(true);
+  const [ mergeType, setMergeType ] = useState<'contacts' | 'companies' | null>(null);
+  const [ survivorId, setSurvivorId ] = useState('');
+  const [ mergeSubmitting, setMergeSubmitting ] = useState(false);
+
+  const refreshGrid = () => {
+    gridRef.current?.api.refreshInfiniteCache();
+    gridRef.current?.api.deselectAll();
+    setSelectedRows([]);
+    setMergeDisabled(true);
+    updateFilters();
+  };
   
   const onSelectionChange = useCallback(
     (event: SelectionChangedEvent) => {
-        const data = event.api.getSelectedNodes();
-        if(data.length > 0) {
-            setSelectedRows(Array.from(event.api.getSelectedNodes()).map(i => { return { personId: i.data.personId, companyId: i.data.companyId, personName: i.data.personName, companyName: i.data.companyName } }))
-            setDeleteDisabled(false);
-        }else{ 
-            setSelectedRows([]);
-            setDeleteDisabled(true);
-        }
-    }, [window], 
+        const nodes = event.api.getSelectedNodes();
+        const rows = nodes.map((node) => ({
+          personId: node.data.personId,
+          companyId: node.data.companyId,
+          personName: node.data.personName,
+          companyName: node.data.companyName,
+        }));
+        setSelectedRows(rows);
+        setMergeDisabled(rows.length < 2);
+    }, [],
   )
 
-  const mergeContactsSelected = async () => {
-    console.log(selectedRows.slice(1,selectedRows.length))
-    let res = window.confirm(`This action will merge entries of ${selectedRows.slice(1,selectedRows.length).map(i => i.personName).join(',')} to ${selectedRows[0].personName}. That is, your first selected entry will remain, and all entries corresponding to the rest of the selected entries will be changed to that of the first. If data from multiple companies is selected, they will be deleted!`)
-
-    if(res){
-      const response = await  axios.post('/api/admin/customers/merge/contacts', selectedRows);
-    
-      if(response.status==200){
-        setSelectedRows([]);
-        gridRef.current.api.deselectAll();
-        return toast.success('Successfully merged ' + selectedRows.length + ' entries to 1!');
-      }
-    }else{
+  const openMergeDialog = (type: 'contacts' | 'companies') => {
+    if (selectedRows.length < 2) {
+      toast.error('Select at least two rows to merge.');
       return;
     }
-    
-  }
+    setSurvivorId(selectedRows[0].personId);
+    setMergeType(type);
+  };
 
-  const mergeCompaniesSelected = async () => {
-    console.log(selectedRows.slice(1,selectedRows.length))
-    let res = window.confirm(`This action will merge entries of ${selectedRows.slice(1,selectedRows.length).map(i => i.companyName).join(',')} to ${selectedRows[0].companyName}. That is, your first selected entry will remain, and all entries corresponding to the rest of the selected entries will be changed to that of the first. If data from multiple companies is selected, they will be deleted!`)
+  const executeMerge = async () => {
+    if (!mergeType || !survivorId) return;
 
-    if(res){
-      const response = await  axios.post('/api/admin/customers/merge/companies', selectedRows);
-    
-      if(response.status==200){
-        setSelectedRows([]);
-        gridRef.current.api.deselectAll();
-        return toast.success('Successfully merged ' + selectedRows.length + ' entries to 1!');
+    const survivor = selectedRows.find((row) => row.personId === survivorId);
+    if (!survivor) return;
+
+    const payload = [
+      survivor,
+      ...selectedRows.filter((row) => row.personId !== survivorId),
+    ];
+
+    setMergeSubmitting(true);
+    try {
+      const url =
+        mergeType === 'contacts'
+          ? '/api/admin/customers/merge/contacts'
+          : '/api/admin/customers/merge/companies';
+
+      const response = await axios.post(url, payload);
+
+      if (response.status === 200) {
+        const label =
+          mergeType === 'contacts' ? 'contacts' : 'companies';
+        toast.success(`Successfully merged ${selectedRows.length} ${label} into one record.`);
+        setMergeType(null);
+        refreshGrid();
       }
-    }else{
-      return;
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const message =
+          typeof err.response?.data === 'string'
+            ? err.response.data
+            : 'Merge failed. Please try again.';
+        toast.error(message);
+      } else {
+        toast.error('Merge failed. Please try again.');
+      }
+    } finally {
+      setMergeSubmitting(false);
     }
-    
-  }
+  };
   
   useEffect(() => {
     const fun  = async () => {
@@ -532,12 +567,37 @@ export default function ActivityReport(){
       <div className="mt-5 mb-7 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className='text-title-md1 font-semibold text-black dark:text-white'>Companies: {totalCompanies}, Contacts: {totalContacts}</h2>
+              <p className="mt-1 text-sm text-body dark:text-bodydark">
+                Each row is a contact. Select two or more rows to merge duplicates.
+              </p>
+              {selectedRows.length === 1 ? (
+                <p className="mt-1 text-sm text-amber-600 dark:text-amber-400">
+                  Select at least one more row to merge.
+                </p>
+              ) : null}
             </div>
 
             <nav>
-                <div className="flex items-center gap-2">
-                    <Button danger={true} onClick={mergeCompaniesSelected} disabled={mergeDisabled}> Merge Comapnies </Button>
-                    <Button danger={true} onClick={mergeContactsSelected} disabled={mergeDisabled}> Merge Contacts </Button>
+                <div className="flex flex-col items-end gap-1">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      danger={true}
+                      onClick={() => openMergeDialog('companies')}
+                      disabled={mergeDisabled}
+                    >
+                      Merge Companies
+                    </Button>
+                    <Button
+                      danger={true}
+                      onClick={() => openMergeDialog('contacts')}
+                      disabled={mergeDisabled}
+                    >
+                      Merge Contacts
+                    </Button>
+                  </div>
+                  <p className="text-xs text-body dark:text-bodydark">
+                    Companies: combine duplicate orgs · Contacts: combine duplicate people
+                  </p>
                 </div>
             </nav>
       </div>
@@ -562,6 +622,18 @@ export default function ActivityReport(){
         />
       </div>
       <Export filterState={filters} parent='customers'/>
+
+      {mergeType ? (
+        <CustomerMergeDialog
+          type={mergeType}
+          rows={selectedRows}
+          survivorId={survivorId}
+          onSurvivorChange={setSurvivorId}
+          onConfirm={executeMerge}
+          onCancel={() => setMergeType(null)}
+          isSubmitting={mergeSubmitting}
+        />
+      ) : null}
     </>
   );
 }

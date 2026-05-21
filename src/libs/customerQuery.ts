@@ -65,13 +65,14 @@ async function fetchPersonRows(
   });
 }
 
-function buildCustomerSort(sortModel?: Record<string, unknown>) {
+function buildCustomerSort(
+  sortModel?: Record<string, unknown>
+): Prisma.PersonOrderByWithRelationInput | Prisma.PersonOrderByWithRelationInput[] {
   if (!sortModel || Object.keys(sortModel).length === 0) {
-    return {
-      company: {
-        companyName: 'asc' as const,
-      },
-    };
+    return [
+      { company: { companyName: 'asc' } },
+      { personName: 'asc' },
+    ];
   }
 
   if (sortModel['Customer']) {
