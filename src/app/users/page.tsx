@@ -129,11 +129,11 @@ export default function Home() {
 
       let factor = 0;
 
-      if(userFyScoreTemp > 250){
+      if(userFyScoreTemp >= 250){
         factor = 0.25
-      }else if(userFyScoreTemp > 200){
+      }else if(userFyScoreTemp >= 200){
         factor = 0.15
-      }else if(userFyScoreTemp > 150){
+      }else if(userFyScoreTemp >= 150){
         factor = 0.06
       }else{
         factor = 0;

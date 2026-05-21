@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/libs/authOptions';
 
 import { NextResponse } from 'next/server';
-import { financialYear } from '@/libs/consts';
+import { financialYear, funnelSummaryMonthlyRange } from '@/libs/consts';
 
 export async function GET(
     request: Request
@@ -59,10 +59,7 @@ export async function GET(
 
         
 
-        let dateEnd = new Date(new Date().setDate(31)).toISOString().split('T')[0];
-        let dateStart = new Date(new Date(new Date().setDate(1)).setMonth(new Date().getMonth() - 12 )).toISOString().split('T')[0];
-
-        console.log(dateEnd, dateStart);
+        const { dateStart, dateEnd } = funnelSummaryMonthlyRange();
 
         let monthly = [];
 

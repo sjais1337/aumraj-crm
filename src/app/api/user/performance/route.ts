@@ -4,6 +4,10 @@ import { authOptions } from '@/libs/authOptions';
 
 import { NextResponse } from 'next/server';
 import { financialYear } from '@/libs/consts';
+import {
+  getMonthlyScoresByStaff,
+  getMonthlyScoresForStaff,
+} from '@/libs/scores';
 
 export async function GET(
     request: Request
@@ -17,50 +21,8 @@ export async function GET(
         
         const { start, end } = financialYear();
 
-        const allData : any = await prisma.$queryRaw`
-            SELECT
-                DATE_FORMAT(sub.date, '%Y-%m') AS month,
-                sub.staffsId,
-                SUM(sub.score) AS sumScore
-            FROM (
-                SELECT
-                    DATE(a.date) AS date,
-                    a.staffsId,
-                    MAX(a.score) AS score
-                FROM
-                    activity a
-                WHERE
-                    a.date >= ${start} AND a.date <= ${end}
-                GROUP BY
-                    DATE(a.date), a.staffsId
-            ) AS sub
-            GROUP BY
-                month, sub.staffsId
-            ORDER BY
-                month ASC;
-        `;
-
-        const userRaw:any = await prisma.$queryRaw`
-            SELECT
-                DATE_FORMAT(sub.date, '%Y-%m') AS month,
-                SUM(sub.score) AS scoreRaw
-            FROM (
-                SELECT
-                    DATE(a.date) AS date,
-                    a.staffsId,
-                    MAX(a.score) AS score
-                FROM
-                    activity a
-                WHERE
-                    a.date >= ${start} AND a.date <= ${end} AND a.staffsId = ${session.user.id}
-                GROUP BY
-                    DATE(a.date), a.staffsId
-            ) AS sub
-            GROUP BY
-                month
-            ORDER BY
-                month ASC;
-        `;
+        const allData = await getMonthlyScoresByStaff(start, end);
+        const userRaw = await getMonthlyScoresForStaff(start, end, session.user.id);
 
         const highest: any = await prisma.$queryRaw`
             SELECT name, SUM(score) AS score, sub.id as userId
@@ -110,10 +72,10 @@ export async function GET(
             LIMIT 1;
         `;
 
-        const averageScoresByMonth = allData.reduce((acc: any, curr: any) => {
+        const averageScoresByMonth = allData.reduce((acc: any, curr) => {
             const month = curr.month;
             acc[month] = acc[month] || { totalScore: 0, count: 0 };
-            acc[month].totalScore += parseInt(curr.sumScore);
+            acc[month].totalScore += curr.sumScore;
             acc[month].count++;
             return acc;
         }, {});

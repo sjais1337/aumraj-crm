@@ -36,6 +36,6 @@ export const config = {
   matcher: [
     '/users/:path*',
     '/admin/:path*',
-    '/groups/:path*'
+    '/group/:path*'
   ]
 };

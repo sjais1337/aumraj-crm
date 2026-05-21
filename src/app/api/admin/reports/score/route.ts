@@ -2,6 +2,21 @@ import { getServerSession } from "next-auth";
 import prisma from '@/libs/prismadb';
 import { authOptions } from "@/libs/authOptions";
 import { NextResponse } from "next/server";
+import { getDailyMaxScoreRows } from '@/libs/scores';
+
+function buildDateRange(from: string, to: string) {
+  if (from != '') {
+    const tod = new Date(to);
+    const lte = new Date(new Date(tod.setMonth(tod.getMonth() + 1)).setDate(-1));
+    const gte = new Date(new Date(from).setDate(1));
+    return { gte, lte };
+  }
+
+  const tod = new Date();
+  const lte = new Date(new Date(tod.setMonth(tod.getMonth() + 1)).setDate(-1));
+  const gte = new Date(new Date(tod.setMonth(tod.getMonth() - 13)).setDate(1));
+  return { gte, lte };
+}
 
 export async function POST(
     request: Request
@@ -18,46 +33,13 @@ export async function POST(
         }
 
         const body = await request.json();
+        const { gte, lte } = buildDateRange(body.from, body.to);
 
-        let filterModel = {};
-        if(body.from != ''){
-            const tod = new Date(body.to);
-            const lte = new Date(new Date(tod.setMonth(tod.getMonth() + 1)).setDate(-1))
-            const gte = new Date(new Date(body.from).setDate(1))
-            
-            filterModel['date'] = {
-                gte: gte,
-                lte: lte
-            }
-        }else{
-            const tod = new Date();
-            const lte = new Date(new Date(tod.setMonth(tod.getMonth() + 1)).setDate(-1))
-            const gte = new Date(new Date(tod.setMonth(tod.getMonth() - 13)).setDate(1))
-
-            filterModel['date'] = {
-                gte: gte,
-                lte: lte
-            }
-        }
-        if(!body.employee){
-            filterModel['employee'] = { leaveDate: null }
-        }
-        if(body.employee){
-            filterModel['staffsId'] = body.employee
-        }
-
-        const data = (await prisma.activity.findMany({
-            select:{
-                employee: true,
-                score: true,
-                date: true
-            },
-            where: filterModel
-        })).map(i => {
-            i['name'] = i.employee.name;
-            i['id'] = i.employee.id;
-            delete i.employee;
-            return i;
+        const data = await getDailyMaxScoreRows({
+            start: gte,
+            end: lte,
+            staffsIds: body.employee ? [body.employee] : undefined,
+            activeStaffOnly: !body.employee,
         });
 
         let salaryModel = {};

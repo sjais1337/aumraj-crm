@@ -20,7 +20,7 @@ export async function POST(
             }
         });
 
-        if(!groupData.scores){
+        if(!groupData.funnel){
             return new NextResponse('User does not have the required permissions!', { status: 401 })
         }
         

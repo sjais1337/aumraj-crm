@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/libs/authOptions';
 
 import { NextResponse } from 'next/server';
-import { financialYear } from '@/libs/consts';
+import { funnelSummaryMonthlyRange } from '@/libs/consts';
 
 export async function GET(
     request: Request
@@ -15,8 +15,7 @@ export async function GET(
             return new NextResponse('User not authenticated.', { status: 401 })
         }
 
-        let dateEnd = new Date(new Date().setDate(31)).toISOString().split('T')[0];
-        let dateStart = new Date(new Date(new Date().setDate(1)).setMonth(new Date().getMonth() - 12 )).toISOString().split('T')[0];
+        const { dateStart, dateEnd } = funnelSummaryMonthlyRange();
 
         const monthly = await prisma.$queryRaw`SELECT 
             DATE_FORMAT(f.date, '%b-%y') AS monthYear,

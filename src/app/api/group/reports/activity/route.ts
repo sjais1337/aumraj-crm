@@ -79,7 +79,18 @@ export async function POST(
         });
 
         const count = (await prisma.activity.count({
-            where: filterModel
+            where: {
+                AND: [
+                    {
+                        employee: {
+                            id: {
+                                in: groupData.members
+                            }
+                        }
+                    },
+                    filterModel
+                ]
+            }
         }))
         
         return NextResponse.json({ 

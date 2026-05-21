@@ -82,6 +82,22 @@ export function formatDate(date) {
     return ( final == 'NaN-NaN-NaN' || final == '01-01-1970' ) ? '' : final;
 }
 
+export function endOfMonthISO(date: Date = new Date()): string {
+    const d = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+    return d.toISOString().split('T')[0];
+}
+
+/** Last ~13 months for funnel monthly hit-% charts (1st of month 12 months ago → end of current month). */
+export function funnelSummaryMonthlyRange(date: Date = new Date()): {
+    dateStart: string;
+    dateEnd: string;
+} {
+    const dateEnd = endOfMonthISO(date);
+    const start = new Date(date.getFullYear(), date.getMonth() - 12, 1);
+    const dateStart = start.toISOString().split('T')[0];
+    return { dateStart, dateEnd };
+}
+
 export const financialYear = () => {
     const today = new Date();
     const year = today.getFullYear();

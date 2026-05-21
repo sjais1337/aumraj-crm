@@ -2,6 +2,21 @@ import { getServerSession } from "next-auth";
 import prisma from '@/libs/prismadb';
 import { authOptions } from "@/libs/authOptions";
 import { NextResponse } from "next/server";
+import { getDailyMaxScoreRows } from '@/libs/scores';
+
+function buildDateRange(from: string, to: string) {
+  if (from != '') {
+    const tod = new Date(to);
+    const lte = new Date(new Date(tod.setMonth(tod.getMonth() + 1)).setDate(-1));
+    const gte = new Date(new Date(from).setDate(1));
+    return { gte, lte };
+  }
+
+  const tod = new Date();
+  const lte = new Date(new Date(tod.setMonth(tod.getMonth() + 1)).setDate(-1));
+  const gte = new Date(new Date(tod.setMonth(tod.getMonth() - 13)).setDate(1));
+  return { gte, lte };
+}
 
 export async function POST(
     request: Request
@@ -22,64 +37,16 @@ export async function POST(
         if(!groupData.reports){
             return new NextResponse('User does not have the required permissions!', { status: 401 })
         }
-        
 
         const body = await request.json();
+        const { gte, lte } = buildDateRange(body.from, body.to);
+        const members = groupData.members as string[];
 
-        let filterModel = {};
-        if(body.from != ''){
-            const tod = new Date(body.to);
-            const lte = new Date(new Date(tod.setMonth(tod.getMonth() + 1)).setDate(-1))
-            const gte = new Date(new Date(body.from).setDate(1))
-            
-            filterModel['date'] = {
-                gte: gte,
-                lte: lte
-            }
-        }else{
-            const tod = new Date();
-            const lte = new Date(new Date(tod.setMonth(tod.getMonth() + 1)).setDate(-1))
-            const gte = new Date(new Date(tod.setMonth(tod.getMonth() - 13)).setDate(1))
-
-            filterModel['date'] = {
-                gte: gte,
-                lte: lte
-            }
-        }
-        if(!body.employee){
-            filterModel['employee'] = { leaveDate: null }
-        }
-        if(body.employee){
-            filterModel['staffsId'] = body.employee
-        }
-
-        const data = (await prisma.activity.findMany({
-            select:{
-                employee: true,
-                score: true,
-                date: true
-            },
-            where: {
-                AND: [
-                    {
-                        employee: {
-                            id: {
-                                //@ts-ignore
-                                in: groupData.members
-                            }
-                        }
-                    },
-                    filterModel
-                ]
-            }
-        })).map(i => {
-            //@ts-ignore
-            i['name'] = i.employee.name;
-            //@ts-ignore
-            i['id'] = i.employee.id;
-            //@ts-ignore
-            delete i.employee;
-            return i;
+        const data = await getDailyMaxScoreRows({
+            start: gte,
+            end: lte,
+            staffsIds: body.employee ? [body.employee] : members,
+            activeStaffOnly: !body.employee,
         });
 
         let salaryModel = {};
@@ -97,8 +64,7 @@ export async function POST(
                     salaryModel,
                     {
                         id: {
-                            //@ts-ignore
-                            in: groupData.members
+                            in: members
                         }
                     }
                 ]
@@ -110,8 +76,6 @@ export async function POST(
             }
         }))
 
-
-        
         return NextResponse.json({
             scores: data,
             salaries: salaries

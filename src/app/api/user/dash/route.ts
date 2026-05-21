@@ -29,7 +29,8 @@ export async function GET(
             }
         })).amount;
 
-        const billingPercentage = billingAchieved/billingTarget;
+        const billingPercentage =
+            billingTarget === 0 ? 0 : billingAchieved / billingTarget;
 
         const salary = (await prisma.staffs.findFirst({
             where: {
