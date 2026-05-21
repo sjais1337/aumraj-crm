@@ -422,7 +422,7 @@ export default function AdminFunnelReport(){
           datasource={dataSource}
           getRowId={(params: GetRowIdParams) => String(params.data.funnelId)}
           suppressRowClickSelection={true}
-          onFilterModified={updateFilters}
+          onFilterChanged={updateFilters}
         />
       </div>
     </>

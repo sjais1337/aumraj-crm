@@ -4,6 +4,7 @@ import { financialYear } from '@/libs/consts';
 import prisma from '@/libs/prismadb';
 import { getServerSession } from 'next-auth';
 import { NextResponse } from 'next/server';
+import { prepareFunnelFilterModel } from '@/libs/funnelFilters';
 
 export async function POST(
     request: Request
@@ -28,7 +29,7 @@ export async function POST(
         
         const body = await request.json();
 
-        let { filters } = body;
+        const filters = prepareFunnelFilterModel(body.filters ?? {});
 
         const { start, end } = financialYear();
 

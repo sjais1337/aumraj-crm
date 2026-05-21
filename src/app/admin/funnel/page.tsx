@@ -460,7 +460,7 @@ export default function AdminFunnelReport(){
           onSelectionChanged={onSelectionChange}
           getRowId={(params: GetRowIdParams) => String(params.data.funnelId)}
           suppressRowClickSelection={true}
-          onFilterModified={updateFilters}
+          onFilterChanged={updateFilters}
         />
       </div>
       <Export filterState={filters} parent='funnel'/>

@@ -367,10 +367,25 @@ export default function ActivityReport(){
 
   const [filteredRowCount, setFilteredRowCount] = useState(0);
 
-  const onFilterChanged = async () => {
-    let filterModel = gridRef.current.api.getFilterModel()
-    setFilters(prismaFilter(filterModel));
+  const [filters, setFilters] = useState<{ archived: boolean }>({ archived: false });
+
+  const buildAmcFilters = (gridFilterModel: Record<string, unknown>) => ({
+    ...prismaFilter(gridFilterModel),
+    archived: seeArchived,
+  });
+
+  const onFilterChanged = () => {
+    if (!gridRef.current?.api) return;
+    setFilters(buildAmcFilters(gridRef.current.api.getFilterModel()));
   };
+
+  useEffect(() => {
+    if (gridRef.current?.api) {
+      setFilters(buildAmcFilters(gridRef.current.api.getFilterModel()));
+    } else {
+      setFilters({ archived: seeArchived });
+    }
+  }, [seeArchived]);
 
   const deleteSelected = async () => {
     try{
@@ -398,25 +413,20 @@ export default function ActivityReport(){
     } 
   }
 
-  const [filters, setFilters] = useState({});
-
-
   useEffect(() => {
-    const fun  = async () => {
-      try{
+    const fun = async () => {
+      try {
         const rowCount = await axios.post('/api/admin/amc/count', {
-          filterModel: filters
+          filterModel: filters,
         });
-    
         setFilteredRowCount(rowCount.data.count);
-      }catch(err){
-        return toast.error('Something went wrong! Please contact development team.')
+      } catch (err) {
+        toast.error('Something went wrong! Please contact development team.');
       }
-    }
+    };
 
     fun();
-  }, [filters])
-
+  }, [filters]);
 
   const router = useRouter();
 

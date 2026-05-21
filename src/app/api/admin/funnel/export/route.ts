@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import prisma from '@/libs/prismadb';
 import { authOptions } from "@/libs/authOptions";
 import { NextResponse } from "next/server";
+import { prepareFunnelFilterModel } from '@/libs/funnelFilters';
 
 export async function POST(
     request: Request
@@ -18,7 +19,7 @@ export async function POST(
         }
         
         const body = await request.json()
-        let { filterModel } =  body;
+        const filterModel = prepareFunnelFilterModel(body.filterModel ?? {});
 
         const data = (await prisma.funnel.findMany({
             select: {
