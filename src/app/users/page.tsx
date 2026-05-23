@@ -16,6 +16,10 @@ import { FieldValues, SubmitHandler, useForm } from "react-hook-form";
 import toast from "react-hot-toast";
 import Loader from "@/components/Loader/Loader";
 import OutsideClickHandler from "@/context/OutsideClickHandler";
+import ProfileAvatar from "@/components/ProfileAvatar";
+import InactiveCustomerPrompt, {
+  ReengageCustomer,
+} from "@/components/Dashboard/InactiveCustomerPrompt";
 import { AgGridReact } from "ag-grid-react";
 import "ag-grid-community/styles/ag-grid.css"; 
 import "ag-grid-community/styles/ag-theme-quartz.css"
@@ -103,20 +107,38 @@ export default function Home() {
   const [ statusSummary, setStatusSummary ] = useState([]);
   const [ statusTotal, setStatusTotal ] = useState({"SUPPORT":0, "DELIVERY": 0, "PAYMENT":0});
   const [ propData, setPropData  ] = useState(null);
+  const [ reengageCustomers, setReengageCustomers ] = useState<ReengageCustomer[]>([]);
 
   useEffect(() => {
+    if (status !== 'authenticated') {
+      return;
+    }
+
     const fetchData = async() => {
       const response_dash = await fetch('/api/user/dash');
       const response_tasks = await fetch('/api/user/tasks');
       const response_performance = await fetch('/api/user/performance');
       const response_summaries = await fetch('/api/user/summaries');
       const response_notifications = await fetch('/api/user/notifications');
+      const response_reengage = await fetch('/api/user/inactive-customers');
 
       const data_summaries = await response_summaries.json();
       const data_dash = await response_dash.json();
       const task = await response_tasks.json();
       const data_performance = await response_performance.json();
       const notifications = await response_notifications.json();
+
+      if (response_reengage.ok) {
+        const reengageData = await response_reengage.json();
+        setReengageCustomers(reengageData.customers ?? []);
+      } else {
+        console.error(
+          'Re-engage prompt unavailable:',
+          response_reengage.status,
+          await response_reengage.text()
+        );
+        setReengageCustomers([]);
+      }
       
       setPropData(notifications);
 
@@ -183,7 +205,7 @@ export default function Home() {
     }
     
     fetchData();
-  }, [])
+  }, [status])
 
   const handleSubmitRemark = () => {
     setSubmitRemark(!submitRemark);
@@ -412,6 +434,8 @@ export default function Home() {
         </div>
       </div>
      
+      <InactiveCustomerPrompt customers={reengageCustomers} />
+
       {
         tasks.length != 0 && 
           <div className="col-span-1 md:col-span-12 px-5 font-bold rounded-lg py-3 text-white bg-rose-700 flex items-center justify-between text-lg">
@@ -488,32 +512,32 @@ export default function Home() {
             notifications.map((i,x) => {
               switch(i.type){
                 case "birthday": 
-                  return <div key={x+0.2} className="flex items-center gap-5 px-4 py-3 bg-blue-700/[0.2] border-b-4 border-indigo-500"><div className="relative h-14 w-14 rounded-full overflow-hidden border-2 border-indigo-500">
-                  <img src={`images/pfp/${i.userId}.png`} alt="User" /></div><div className="flex flex-1 items-center justify-between"><div><h5 className="text-base dark:text-white"><span className="text-indigo-600 text-sm">🎉 Wishing a very</span> <div className="font-semibold text-lg text-indigo-500">
+                  return <div key={x+0.2} className="flex items-center gap-5 px-4 py-3 bg-blue-700/[0.2] border-b-4 border-indigo-500"><div className="relative h-14 w-14 overflow-hidden rounded-full border-2 border-indigo-500">
+                  <ProfileAvatar userId={i.userId} size={56} alt={i.name} /></div><div className="flex flex-1 items-center justify-between"><div><h5 className="text-base dark:text-white"><span className="text-indigo-600 text-sm">🎉 Wishing a very</span> <div className="font-semibold text-lg text-indigo-500">
                   Happy Birthday to {i.name} <span className="text-xl">🎂✨</span></div></h5></div></div></div>
                 case "anniversary":
-                  return <div key={x+0.2} className="flex items-center gap-5 px-4 py-3 bg-rose-700/[0.2] border-b-4 border-rose-500"><div className="relative h-14 w-14 rounded-full overflow-hidden border-2 border-rose-500">
-                  <img src={`images/pfp/${i.userId}.png`} alt="User" /> </div><div className="flex flex-1 items-center justify-between"><div><h5 className="text-base dark:text-white"><span className="text-rose-600 text-sm">💖 Celebrating</span><div className="font-semibold text-lg text-rose-500">
+                  return <div key={x+0.2} className="flex items-center gap-5 px-4 py-3 bg-rose-700/[0.2] border-b-4 border-rose-500"><div className="relative h-14 w-14 overflow-hidden rounded-full border-2 border-rose-500">
+                  <ProfileAvatar userId={i.userId} size={56} alt={i.name} /> </div><div className="flex flex-1 items-center justify-between"><div><h5 className="text-base dark:text-white"><span className="text-rose-600 text-sm">💖 Celebrating</span><div className="font-semibold text-lg text-rose-500">
                   {i.name}&apos;s Marriage Anniversary! <span className="text-xl">💍✨</span></div></h5></div></div></div>
                 case "join":
-                  return <div key={x+0.2} className="flex items-center gap-5 px-4 py-3 bg-green-700/[0.2] border-b-4 border-green-500"><div className="relative h-14 w-14 rounded-full overflow-hidden border-2 border-green-500">
-                  <img src={`images/pfp/${i.userid}.png`} alt="User" /></div><div className="flex flex-1 items-center justify-between"><div><h5 className="text-base dark:text-white"><span className="text-green-600 text-sm">🌟 Celebrating</span><div className="font-semibold text-lg text-green-500">
+                  return <div key={x+0.2} className="flex items-center gap-5 px-4 py-3 bg-green-700/[0.2] border-b-4 border-green-500"><div className="relative h-14 w-14 overflow-hidden rounded-full border-2 border-green-500">
+                  <ProfileAvatar userId={i.userId} size={56} alt={i.name} /></div><div className="flex flex-1 items-center justify-between"><div><h5 className="text-base dark:text-white"><span className="text-green-600 text-sm">🌟 Celebrating</span><div className="font-semibold text-lg text-green-500">
                   {i.name}&apos;s Work Anniversary! <span className="text-xl">🎉👔</span></div></h5></div></div></div>
                 case "support_closed":
-                  return <div key={x+0.2} className="flex items-center gap-5 px-7.5 py-3 hover:bg-gray-3 dark:hover:bg-meta-4"><div className="relative h-14 w-14 rounded-full overflow-hidden"><img src="images/thumbsup.png" className="p-2" alt="User" /></div><div className="flex flex-1 items-center justify-between"><div><h5 className="font-medium text-black dark:text-white">
+                  return <div key={x+0.2} className="flex items-center gap-5 px-7.5 py-3 hover:bg-gray-3 dark:hover:bg-meta-4"><div className="relative h-14 w-14 overflow-hidden rounded-full"><img src="/images/thumbsup.png" className="p-2" alt="Support closed" /></div><div className="flex flex-1 items-center justify-between"><div><h5 className="font-medium text-black dark:text-white">
                   {i.name}</h5><p><span className="text-sm font-medium text-black dark:text-white">
                   Good Job for closing case of {i.companyName}.</span></p></div></div></div>
                 case "funnel_added":
-                  return <div key={x+0.2} className="flex items-center gap-5 px-4 py-3 bg-warning/[0.2] border-b-4 border-warning"><div className="relative h-14 w-14 rounded-full overflow-hidden"><img src="images/trophy.png" className="p-1" alt="User" /></div><div className="flex flex-1 items-center justify-between"><div><h5 className="font-medium text-black dark:text-white">
+                  return <div key={x+0.2} className="flex items-center gap-5 px-4 py-3 bg-warning/[0.2] border-b-4 border-warning"><div className="relative h-14 w-14 overflow-hidden rounded-full"><img src="/images/trophy.png" className="p-1" alt="Funnel won" /></div><div className="flex flex-1 items-center justify-between"><div><h5 className="font-medium text-black dark:text-white">
                   Congratulations <span className="text-warning">{i.name}</span></h5><p><span className="text-sm font-medium text-black dark:text-white">
                   for PO from {i.companyName}.</span></p></div></div></div>
                 case "support_added":
-                  return <div key={x+0.2} className="flex items-center gap-5 px-7.5 py-3 hover:bg-gray-3 dark:hover:bg-meta-4"><div className="relative h-11 w-11 mx-1.5 rounded-full overflow-hidden"><img src="images/alert.webp" alt="User" /></div><div className="flex flex-1 items-center justify-between"><div><h5 className="font-medium text-black dark:text-white">
+                  return <div key={x+0.2} className="flex items-center gap-5 px-7.5 py-3 hover:bg-gray-3 dark:hover:bg-meta-4"><div className="relative mx-1.5 h-11 w-11 overflow-hidden rounded-full"><img src="/images/alert.webp" alt="Support added" /></div><div className="flex flex-1 items-center justify-between"><div><h5 className="font-medium text-black dark:text-white">
                   {i.name}</h5><p><span className="text-sm font-medium text-black dark:text-white">
                   Action needed for {i.companyName}.</span></p></div></div></div>
                 case "message":
-                  return <div key={x+0.2} className="flex items-center gap-5 px-7.5 py-3 hover:bg-gray-3 dark:hover:bg-meta-4"><div className="relative h-14 w-14 rounded-full overflow-hidden">
-                  <img src={"images/pfp/" + i.userId + ".png"} alt="User" /></div><div className="flex flex-1 items-center justify-between"><div><h5 className="font-medium text-black dark:text-white">
+                  return <div key={x+0.2} className="flex items-center gap-5 px-7.5 py-3 hover:bg-gray-3 dark:hover:bg-meta-4"><div className="relative h-14 w-14 overflow-hidden rounded-full">
+                  <ProfileAvatar userId={i.userId} size={56} alt={i.checkedBy} /></div><div className="flex flex-1 items-center justify-between"><div><h5 className="font-medium text-black dark:text-white">
                   {i.checkedBy}</h5><p><span className="text-sm font-medium text-black dark:text-white">
                   {i.message}.</span><span className="text-sm cursor-pointer" id={i.activityId} onClick={(e) => { readMessage(e); }}> Read?</span></p></div></div></div>
               }
@@ -572,12 +596,12 @@ export default function Home() {
           <div className="flex flex-col">
         <div className="flex items-center gap-4 p-3 rounded-lg bg-green-200 text-green-900">
           {
-            highest.score != 0 &&<span className="w-14 h-14 rounded-full overflow-hidden">
-            <img
-          src={`images/pfp/${highest.userId}.png`}
-          alt="Top Scorer Last Month Avatar"
-          className="w-full"
-        />
+            highest.score != 0 &&<span className="h-14 w-14 overflow-hidden rounded-full">
+            <ProfileAvatar
+              userId={highest.userId}
+              size={56}
+              alt={highest.name}
+            />
           </span> 
           }
           
@@ -595,12 +619,12 @@ export default function Home() {
           
           {
               last.score != 0 &&
-              <span className="w-14 h-14 rounded-full overflow-hidden">
-                <img
-              src={`images/pfp/${last.userId}.png`}
-              alt="Top Scorer Last Month Avatar"
-              className="w-full"
-            />
+              <span className="h-14 w-14 overflow-hidden rounded-full">
+                <ProfileAvatar
+                  userId={last.userId}
+                  size={56}
+                  alt={last.name}
+                />
               </span> 
           }
 

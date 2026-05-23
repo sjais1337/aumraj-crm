@@ -3,7 +3,11 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/libs/authOptions';
 
 import { NextResponse } from 'next/server';
-import { financialYear, funnelSummaryMonthlyRange } from '@/libs/consts';
+import {
+  financialYearBounds,
+  funnelSummaryLast12MonthsRange,
+  serializeQueryRows,
+} from '@/libs/funnelSummary';
 
 export async function GET(
     request: Request
@@ -26,8 +30,7 @@ export async function GET(
         }
         
 
-        const fyStart = financialYear().start.toISOString().split('T')[0];
-        const fyEnd = financialYear().end.toISOString().split('T')[0];
+        const { fyStart, fyEnd } = financialYearBounds();
 
         let summary = [];
 
@@ -41,8 +44,10 @@ export async function GET(
                 ROUND(IF(COUNT(f.funnelId) > 0, 
                 (COUNT(CASE WHEN f.status = 'Won' THEN 1 END) / COUNT(f.funnelId)) * 100, 
                 0)) AS hitPercentage,
-                COUNT(CASE WHEN f.status = 'Cold' OR f.status = 'Mild' OR f.status = 'Hot' THEN 1 END) AS cases,
-                COUNT(DISTINCT CASE WHEN f.status IN ('Cold', 'Mild', 'Hot') THEN f.companyId END) AS distinctCompanies
+                (SELECT COUNT(*) FROM funnel f2
+                    WHERE f2.staffsId = s.id AND f2.status IN ('Cold', 'Mild', 'Hot')) AS cases,
+                (SELECT COUNT(DISTINCT f2.companyId) FROM funnel f2
+                    WHERE f2.staffsId = s.id AND f2.status IN ('Cold', 'Mild', 'Hot')) AS distinctCompanies
             FROM 
                 staffs s
             LEFT JOIN 
@@ -54,12 +59,12 @@ export async function GET(
             GROUP BY 
                 s.id, s.name
             HAVING 
-                COUNT(f.funnelId) > 0;`)
+                COUNT(f.funnelId) > 0
+                OR (SELECT COUNT(*) FROM funnel f2
+                    WHERE f2.staffsId = s.id AND f2.status IN ('Cold', 'Mild', 'Hot')) > 0;`)
         }
 
-        
-
-        const { dateStart, dateEnd } = funnelSummaryMonthlyRange();
+        const { dateStart, dateEnd } = funnelSummaryLast12MonthsRange();
 
         let monthly = [];
 
@@ -69,8 +74,8 @@ export async function GET(
             monthly = await prisma.$queryRawUnsafe(`
                 SELECT 
                     DATE_FORMAT(f.date, '%b-%y') AS monthYear,
-                    COUNT(CASE WHEN f.status = 'Won' THEN 1 END) AS wonCases,
                     COUNT(f.funnelId) AS totalFunnelCases,
+                    COUNT(CASE WHEN f.status = 'Won' THEN 1 END) AS wonCases,
                     ROUND(IF(COUNT(f.funnelId) > 0, 
                     (COUNT(CASE WHEN f.status = 'Won' THEN 1 END) / COUNT(f.funnelId)) * 100, 
                     0)) AS hitPercentage
@@ -80,19 +85,15 @@ export async function GET(
                     f.date BETWEEN '${dateStart}' AND '${dateEnd}'
                     AND f.staffsId IN (${membersList})
                 GROUP BY 
-                    DATE_FORMAT(f.date, '%b-%y')
-                HAVING 
-                    COUNT(f.funnelId) > 1
+                    DATE_FORMAT(f.date, '%Y-%m')
                 ORDER BY 
                     MIN(f.date) DESC;
             `);
         }
 
-        
-        
         return NextResponse.json({
-            summary: JSON.parse(JSON.stringify(summary, (key,value) => (typeof value == 'bigint' ?  Number(value) : value) )),
-            monthly: JSON.parse(JSON.stringify(monthly, (key,value) => (typeof value == 'bigint' ?  Number(value) : value) )),
+            summary: serializeQueryRows(summary),
+            monthly: serializeQueryRows(monthly),
             totalCases: 0,
             totalCustomers: 0,
         });

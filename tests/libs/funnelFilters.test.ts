@@ -35,6 +35,17 @@ describe('prepareFunnelFilterModel', () => {
     });
   });
 
+  it('defaults to open statuses when filtering by employee only', () => {
+    expect(
+      prepareFunnelFilterModel({
+        employee: { name: { contains: 'Vijay' } },
+      })
+    ).toEqual({
+      employee: { name: { contains: 'Vijay' } },
+      status: { in: ['Hot', 'Mild', 'Cold'] },
+    });
+  });
+
   it('maps a single status value to an in filter', () => {
     expect(
       prepareFunnelFilterModel({

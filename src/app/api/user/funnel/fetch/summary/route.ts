@@ -3,7 +3,10 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/libs/authOptions';
 
 import { NextResponse } from 'next/server';
-import { funnelSummaryMonthlyRange } from '@/libs/consts';
+import {
+  funnelSummaryLast12MonthsRange,
+  serializeQueryRows,
+} from '@/libs/funnelSummary';
 
 export async function GET(
     request: Request
@@ -15,12 +18,12 @@ export async function GET(
             return new NextResponse('User not authenticated.', { status: 401 })
         }
 
-        const { dateStart, dateEnd } = funnelSummaryMonthlyRange();
+        const { dateStart, dateEnd } = funnelSummaryLast12MonthsRange();
 
         const monthly = await prisma.$queryRaw`SELECT 
             DATE_FORMAT(f.date, '%b-%y') AS monthYear,
-            COUNT(CASE WHEN f.status = 'Won' THEN 1 END) AS wonCases,
             COUNT(f.funnelId) AS totalFunnelCases,
+            COUNT(CASE WHEN f.status = 'Won' THEN 1 END) AS wonCases,
             ROUND(IF(COUNT(f.funnelId) > 0, 
             (COUNT(CASE WHEN f.status = 'Won' THEN 1 END) / COUNT(f.funnelId)) * 100, 
             0)) AS hitPercentage
@@ -30,13 +33,12 @@ export async function GET(
             f.date BETWEEN ${dateStart} AND ${dateEnd}
             AND f.staffsId = ${session.user.id}
         GROUP BY 
-            DATE_FORMAT(f.date, '%b-%y')
-        HAVING 
-            COUNT(f.funnelId) > 1
+            DATE_FORMAT(f.date, '%Y-%m')
         ORDER BY 
             MIN(f.date) DESC;`;
+
         return NextResponse.json({
-            monthly: JSON.parse(JSON.stringify(monthly, (key,value) => (typeof value == 'bigint' ?  Number(value) : value) )),
+            monthly: serializeQueryRows(monthly),
         });
     } catch(err){
         console.log(err);

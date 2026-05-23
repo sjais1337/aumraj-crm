@@ -46,7 +46,11 @@ export function prepareFunnelFilterModel(
     };
   }
 
-  if (!explicitAllStatuses && Object.keys(filter).length === 0) {
+  const hasStatusFilter =
+    Boolean(filter.status) ||
+    Boolean(filter.OR && Array.isArray(filter.OR));
+
+  if (!explicitAllStatuses && !hasStatusFilter) {
     filter.status = { in: ['Hot', 'Mild', 'Cold'] };
   }
 

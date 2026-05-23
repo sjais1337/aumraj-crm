@@ -102,6 +102,18 @@ incentive = floor(salary × workMonths × factor × (billingAchieved / billingTa
 | AMC expiry warnings | summaries |
 | Tasks list | `/api/user/tasks` |
 | Notifications feed | `/api/user/notifications` |
+| Re-engage prompt (up to 2 customers) | `/api/user/inactive-customers` |
+
+### Re-engage prompt (`GET /api/user/inactive-customers`)
+
+Org-wide pool of customers with historical touchpoints (activity, funnel, support, SLA). Each dashboard load **weighted-random** picks up to 2 accounts:
+
+- **Yield score:** won funnel revenue, IT users, branches, SLA history
+- **Recency multiplier:** contact within 3 months lowers weight (0.2–1.0 by age); does not hard-exclude
+- **Active SLA penalty:** ×0.4 when a non-archived SLA is still in force (lowers priority, not removed)
+- **History gate:** first org touch must be older than 30 days (excludes brand-new leads only)
+
+Contact name/phone/email are returned to the client but hidden until the user clicks **Reveal contact** on the dashboard strip (placed after billing KPIs).
 
 ## API endpoints
 
@@ -110,6 +122,7 @@ incentive = floor(salary × workMonths × factor × (billingAchieved / billingTa
 | `/api/user/dash` | GET | Billing + salary + workMonths |
 | `/api/user/performance` | GET | Charts + leaderboards |
 | `/api/user/summaries` | GET | Org rollups |
+| `/api/user/inactive-customers` | GET | Weighted-random re-engage picks (max 2) |
 | `/api/user/tasks` | GET | Assigned tasks |
 | `/api/admin/billing/add` | POST | New BillingData row |
 | `/api/admin/billing/update` | POST | Update target? / data |

@@ -94,7 +94,9 @@ MYSQL_PWD='aumraj@123' ./scripts/import-local-db.sh
 
 ## Production migration (old VPS → new VPS)
 
-Use this when cutting over `kra.aumraj.in` to a new server. See also [PRODUCTION_DEPLOY.md](./PRODUCTION_DEPLOY.md).
+**Start here:** [PRODUCTION_DEPLOY.md](./PRODUCTION_DEPLOY.md) — full start-to-finish runbook (dump → SCP → MySQL on Ubuntu → restore → clone → `.env.production` → deploy → HTTPS).
+
+The sections below are a shorter reference and overlap with that guide.
 
 ### Overview
 

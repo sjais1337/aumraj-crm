@@ -1,27 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { signOut, useSession } from "next-auth/react";
 import OutsideClickHandler from "@/context/OutsideClickHandler";
+import ProfileAvatar from "@/components/ProfileAvatar";
 
 const DropdownUser = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const {data: session, status} = useSession();
+  const {data: session} = useSession();
   const trigger = useRef<any>(null);
   const dropdown = useRef<any>(null);
-  
-  const [profileUrl, setProfileUrl] = useState('placeholder');
+  const [photoVersion, setPhotoVersion] = useState(0);
 
   useEffect(() => {
-    fetch('/images/pfp/' + session.user.id + '.png')
-    .then((res) => {
-      if(res.status == 200){
-        setProfileUrl(session.user.id)
-      }else{
-        setProfileUrl('placeholder')
-      }
-    })
-  }, [])
+    const onPhotoUpdated = () => setPhotoVersion(Date.now());
+    window.addEventListener('profile-photo-updated', onPhotoUpdated);
+    return () =>
+      window.removeEventListener('profile-photo-updated', onPhotoUpdated);
+  }, []);
 
   const handleOutsideClick = () => {
     setDropdownOpen(false)
@@ -38,17 +33,18 @@ const DropdownUser = () => {
         >
           <span className="hidden text-right lg:block">
             <span className="block text-sm font-medium text-black dark:text-white">
-              { session.user.name }
+              { session?.user?.name }
             </span>
-            <span className="block text-xs">{session.user.post}</span>
+            <span className="block text-xs">{session?.user?.post}</span>
           </span>
 
-          <span className="h-12 w-12 rounded-full overflow-hidden">
-            <img src={"/images/pfp/" + profileUrl + '.png'} height={112} width={112} style={{
-                width: "auto",
-                height: "auto",
-              }}
-              alt="User"></img>
+          <span className="h-12 w-12 overflow-hidden rounded-full">
+            <ProfileAvatar
+              userId={session?.user?.id}
+              size={48}
+              cacheKey={photoVersion}
+              alt={session?.user?.name ?? 'User'}
+            />
           </span>
 
           <svg

@@ -59,7 +59,7 @@ export async function applyScoreToStaffDays(
   }
 
   let totalCount = 0;
-  for (const { staffsId, date } of dayKeys.values()) {
+  for (const { staffsId, date } of Array.from(dayKeys.values())) {
     const result = await prisma.activity.updateMany({
       where: {
         staffsId,

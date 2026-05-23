@@ -53,29 +53,31 @@ Filename: `FUNNEL_[PAST|CURRENT|ALL].xlsx` (parent `funnel` → `FUNNEL` + flag)
 
 ## Calculations
 
-### Hit percentage (monthly summary SQL)
+### Hit percentage — staff summary table (current FY)
 
-```text
-hitPercentage = IF(totalFunnelCases > 0,
-  (wonCases / totalFunnelCases) * 100,
-  0)
-```
+All FY cutoffs use funnel **add date** (`f.date`), **not** `closureDate`.
 
-Where:
+| Column | Definition |
+|--------|------------|
+| **Won** | Count where `status = 'Won'` and add date in current FY |
+| **Total** | Count of all funnel rows with add date in current FY (any status) |
+| **Hit %** | `ROUND(won / total × 100)` |
+| **Customers** | Distinct `companyId` with **active** open status (Hot/Mild/Cold); **no date filter** |
+| **Cases** | Count of **active** open cases (Hot/Mild/Cold); **no date filter** |
 
-- `wonCases = COUNT(CASE WHEN status = 'Won' THEN 1 END)`
-- `totalFunnelCases = COUNT(funnelId)`
+### Hit percentage — monthly team table (last 12 months)
 
-Rounded in SQL with `ROUND(...)`.
+Rolling **last 12 calendar months** (current month + prior 11), by **add date** (`f.date`). Not limited to the financial year.
 
-### Date window (user summary — current behavior)
+Grouped by calendar month (`DATE_FORMAT(f.date, '%Y-%m')`).
 
-```javascript
-dateEnd = new Date().setDate(31)   // day-of-month 31 — overflow risk
-dateStart = setMonth(getMonth() - 12) with setDate(1)
-```
+| Row | Definition |
+|-----|------------|
+| **Total** | All funnel rows the team added that month |
+| **Won** | Rows added that month with `status = 'Won'` |
+| **Hit** | `ROUND(won / total × 100)` for that month |
 
-Filter: `f.date BETWEEN dateStart AND dateEnd` for current staff.
+Admin monthly = whole org; group monthly = group members only. Months with a single case are included.
 
 ## Outputs
 
