@@ -54,7 +54,7 @@ export async function GET(
 
         // Team monthly (last 12 months): cases added per month; won = status Won in that month.
         const monthly = await prisma.$queryRaw`SELECT 
-            DATE_FORMAT(f.date, '%b-%y') AS monthYear,
+            DATE_FORMAT(MIN(f.date), '%b-%y') AS monthYear,
             COUNT(f.funnelId) AS totalFunnelCases,
             COUNT(CASE WHEN f.status = 'Won' THEN 1 END) AS wonCases,
             ROUND(IF(COUNT(f.funnelId) > 0, 
@@ -63,7 +63,7 @@ export async function GET(
         FROM 
             funnel f
         WHERE 
-            f.date BETWEEN ${dateStart} AND ${dateEnd}
+            f.date >= ${dateStart} AND f.date < DATE_ADD(${dateEnd}, INTERVAL 1 DAY)
         GROUP BY 
             DATE_FORMAT(f.date, '%Y-%m')
         ORDER BY 

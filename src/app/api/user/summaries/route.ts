@@ -11,7 +11,7 @@ export async function GET(
     try{ 
         interface FunnelSummaryItem {
           name: string;
-          'COUNT(f.staffsId)': bigint; // Use `bigint` since Prisma may return BigInt for COUNT
+          funnelCount: bigint;
         }
 
         interface AmcSummaryItem {
@@ -28,13 +28,17 @@ export async function GET(
         }
 
         const rawFunnelSummary = await prisma.$queryRaw<FunnelSummaryItem[]>`
-            SELECT s.name, COUNT(f.staffsId) FROM funnel f JOIN staffs s ON s.id = f.staffsId WHERE DATE_FORMAT(f.date, '%m%Y') = DATE_FORMAT(CURRENT_DATE, '%m%Y') GROUP BY f.staffsId; 
+            SELECT s.name, COUNT(f.staffsId) AS funnelCount
+            FROM funnel f
+            JOIN staffs s ON s.id = f.staffsId
+            WHERE DATE_FORMAT(f.date, '%m%Y') = DATE_FORMAT(CURRENT_DATE, '%m%Y')
+            GROUP BY f.staffsId, s.name;
         `;
 
         const funnelSummary = rawFunnelSummary.map(item => ({
             name: item.name,
-            count: Number(item['COUNT(f.staffsId)']),
-        })); 
+            count: Number(item.funnelCount ?? item['COUNT(f.staffsId)']),
+        }));
 
         const rawAmcSummary = await prisma.$queryRaw<AmcSummaryItem[]>`
           SELECT 
@@ -119,6 +123,7 @@ export async function GET(
             support: status
         });
     } catch(err){
+        console.error('GET /api/user/summaries failed:', err);
         return new NextResponse('Internal Error', { status: 500 })
     }
 }

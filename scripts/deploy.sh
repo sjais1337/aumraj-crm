@@ -21,7 +21,7 @@ cd "$ROOT"
 ENV_FILE=".env.production"
 SERVICE="aumraj-prod"
 PORT=5500
-BRANCH="${DEPLOY_BRANCH:-main}"
+BRANCH="${DEPLOY_BRANCH:-master}"
 
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "ERROR: $ENV_FILE not found."
@@ -50,7 +50,9 @@ else
 fi
 
 echo "==> Installing dependencies..."
-npm ci
+# NODE_ENV=production in the shell skips devDependencies — build needs them.
+unset NODE_ENV
+npm ci --include=dev
 
 echo "==> Loading environment..."
 set -a
